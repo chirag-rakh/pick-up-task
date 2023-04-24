@@ -1,6 +1,25 @@
 (function( $ ) {
 	'use strict';
 
+		var pickupStore = $('#pickup_store');
+		var pickupDate = $('#pickup_date');
+		var shippingAddress = $('.col-2');
+		var shipping = $('input[name^="shipping_method"]');
+
+		console.log(shipping);
+
+		$(shipping).on('change', function() {
+			if ($(this).val() === 'local_pickup:2') {
+				pickupStore.show();
+				pickupDate.show();
+				shippingAddress.style.display = none;
+			} else {
+				pickupStore.hide();
+				pickupDate.hide();
+				shippingAddress.show();
+			}
+		});
+
 	/**
 	 * All of the code for your public-facing JavaScript source
 	 * should reside in this file.

@@ -29,4 +29,16 @@
 	 * practising this, we should strive to set a better example in our own work.
 	 */
 
+	/* jQuery(document).ready(function($) {
+		$(function() {
+			alert("Hi");
+		});
+		$(document).on('change', 'input[name^="shipping_method"]', function() {
+		  var selected_shipping = $(this).val();
+		  alert("Hi");
+		  // do something with the selected_shipping value here
+		  console.log(selected_shipping);
+		});
+	  }); */
+
 })( jQuery );

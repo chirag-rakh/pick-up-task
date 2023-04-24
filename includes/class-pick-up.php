@@ -171,6 +171,8 @@ class Pick_Up {
 		$this->loader->add_action( 'send_pickup_reminder_email_cron', $plugin_admin,  'send_pickup_reminder_email_callback', 10, 4 );
 		
 
+		$this->loader->add_filter( 'post_updated_messages', $plugin_admin, 'custom_publish_post_message' );
+
 	}
 
 	/**

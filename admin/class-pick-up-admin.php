@@ -96,7 +96,7 @@ class Pick_Up_Admin {
 		 * class.
 		 */
 
-		wp_enqueue_script( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'js/pick-up-admin.js', array( 'jquery' ), $this->version, false );
+		wp_enqueue_script( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'js/pick-up-admin.js', array( 'jquery' ), $this->version, 'false' );
 
 	}
 
@@ -157,10 +157,10 @@ class Pick_Up_Admin {
 		$store_location_url = get_post_meta($post->ID, '_store_location_url', true);
 		echo '<table class="form-table">';
 		echo '<tr><th><label for="store_name">' . __('Store Name', 'woo-pickup') . '</label></th><td>';
-		echo '<input type="text" id="store_name" name="store_name" value="' . esc_attr($store_name) . '">';
+		echo '<input type="text" id="store_name" name="store_name" value="' . esc_attr($store_name) . '" required pattern="[^\s]+">';
 		echo '</td></tr>';
 		echo '<tr><th><label for="store_address">' . __('Store Address', 'woo-pickup') . '</label></th><td>';
-		echo '<textarea id="store_address" name="store_address">' . esc_textarea($store_address) . '</textarea>';
+		echo '<textarea id="store_address" name="store_address" required pattern="[^\s]+">' . esc_textarea($store_address) . '</textarea>';
 		echo '</td></tr>';
 		echo '<tr><th><label for="store_phone">' . __('Store Phone', 'woo-pickup') . '</label></th><td>';
 		echo '<input type="text" id="store_phone" name="store_phone" value="' . esc_attr($store_phone) . '">';
@@ -202,7 +202,7 @@ class Pick_Up_Admin {
 	// Add pickup store dropdown and date picker to checkout page
 	function add_pickup_store_to_checkout()
 	{
-		//Hide Shipping method amd shipping address on checkout page
+		//Hide Shipping method amd shipping address on checkout page when local pick up selected
 		function custom_checkout_css() {
 			?>
 			<style>
@@ -222,17 +222,40 @@ class Pick_Up_Admin {
 			'order' => 'ASC'
 		));
 
-		//Hide shipping totals
+		?>
+    <script type="text/javascript">
+        jQuery(function($) {
+			var pickupStore = $('#pickup_store');
+			var pickupDate = $('#pickup_date');
+			var shippingAddress = $('.col-2');
+			var shipping = $('input[name^="shipping_method"]');
+
+			$(shipping).on('change', function() {
+				if ($(this).val() === 'local_pickup:2') {
+					pickupStore.show();
+					pickupDate.show();
+					shippingAddress.style.display = none;
+				} else {
+					pickupStore.hide();
+					pickupDate.hide();
+					shippingAddress.show();
+				}
+			});
+		});
+    </script>
+    <?php
+
+		/* //Hide shipping totals
 		?>
 			<style>
 				.woocommerce-shipping-totals{
 					display:none !important;
 				}
 			</style>
-			<?php
+			<?php */
 		
-		if ($pickup_stores && in_array( 'local_pickup:2', $chosen_methods )) {
-			custom_checkout_css();
+		if ($pickup_stores) {
+			//custom_checkout_css();
 
 			echo '<div id="pickup_store">';
 			woocommerce_form_field('pickup_store', array(
@@ -267,6 +290,12 @@ class Pick_Up_Admin {
 		}
 		if (!$_POST['pickup_date'] || $_POST['pickup_date'] == '') {
 			wc_add_notice(__('Please select a pickup date.', 'woo-pickup'), 'error');
+		}
+		else{
+			$pickup_date = $_POST['pickup_date'];
+			if (strtotime($pickup_date) < strtotime('+0 day')) {
+				wc_add_notice(__('Pickup date must be tomorrow onwards.', 'woo-pickup'), 'error');
+			}
 		}
 	}
 
@@ -315,10 +344,15 @@ class Pick_Up_Admin {
 			// add the pickup store and pickup date to the email
 			echo '<p><strong>Pickup Store:</strong> ' . esc_html(get_post_meta($pickup_store, '_store_name', true)) . '</p>';
 			echo '<p><strong>Store Address:</strong> ' . esc_html(get_post_meta($pickup_store, '_store_address', true)) . '</p>';
-			echo '<p><strong>Store Phone:</strong> ' . esc_html(get_post_meta($pickup_store, '_store_phone', true)) . '</p>';
+			if ( get_post_meta( $pickup_store, '_store_phone', true ) != "" ) {
+				echo '<p><strong>Store Phone:</strong> ' . esc_html(get_post_meta($pickup_store, '_store_phone', true)) . '</p>';
+			}
+			if ( get_post_meta( $pickup_store, '_store_email', true ) != "" ) {
 			echo '<p><strong>Store Email:</strong> ' . esc_html(get_post_meta($pickup_store, '_store_email', true)) . '</p>';
+			}
+			if ( get_post_meta( $pickup_store, '_store_location_url', true ) != "" ) {
 			echo '<p><strong>Store Location:</strong> ' . esc_html(get_post_meta($pickup_store, '_store_location_url', true)) . '</p>';
-			
+			}
 			echo '<p><strong>Pickup Date:</strong> ' . date_i18n(get_option('date_format'), strtotime($pickup_date)) . '</p>';
 
 	}
@@ -381,6 +415,29 @@ class Pick_Up_Admin {
 
 			wp_mail($customer_email, $subject, $message, $headers);
 		}
+	}
+
+	//Change the post published message to custom(store) message
+	function custom_publish_post_message( $messages ) {
+		global $post;
+		$post_type = get_post_type( $post );
+		$post_status = get_post_status( $post );
+
+		$messages[$post_type] = array(
+			0  => '', // Unused. Messages start at index 1.
+			1  => __('Store has been updated successfully.', 'my-textdomain'),
+			2  => __('Store details updated.', 'my-textdomain'),
+			3  => __('Store details deleted.', 'my-textdomain'),
+			4  => __('Store  updated.', 'my-textdomain'),
+			5  => isset($_GET['revision']) ? sprintf( __('Store restored to revision from %s', 'my-textdomain'), wp_post_revision_title( (int) $_GET['revision'], false ) ) : false,
+			6  => __('Store has been added successfully.', 'my-textdomain'),
+			7  => __('Store details saved.', 'my-textdomain'),
+			8  => __('Store details submitted.', 'my-textdomain'),
+			9  => sprintf( __('Store adding scheduled for: <strong>%1$s</strong>.', 'my-textdomain'), date_i18n( __( 'M j, Y @ G:i', 'my-textdomain' ), strtotime( $post->post_date ) ) ),
+			10 => __('Post draft updated.', 'my-textdomain')
+		);
+	
+		return $messages;
 	}
 
 }
